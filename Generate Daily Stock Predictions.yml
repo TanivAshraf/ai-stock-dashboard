@@ -1,0 +1,37 @@
+name: Generate Daily Stock Predictions
+
+on:
+  schedule:
+    # Runs at 22:00 UTC every day (e.g., 6 PM EST after market close)
+    - cron: '0 22 * * 1-5' # Run Monday-Friday
+  workflow_dispatch: # Allows manual triggering from the Actions tab
+
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo content
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests yfinance pandas
+
+      - name: Run prediction script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+        run: python generate_predictions.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add predictions.json
+          # Commit only if there are changes
+          git diff --staged --quiet || git commit -m "Update daily predictions"
+          git push
