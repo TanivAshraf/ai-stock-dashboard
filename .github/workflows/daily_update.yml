@@ -2,16 +2,40 @@ name: Generate Daily Stock Predictions
 
 on:
   schedule:
-    # Runs at 22:00 UTC every day (e.g., 6 PM EST after market close)
-    - cron: '0 22 * * 1-5' # Run Monday-Friday
-  workflow_dispatch: # Allows manual triggering from the Actions tab
+    # Runs at 22:00 UTC (e.g., 6 PM EST) every weekday
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch: # Allows manual run from the Actions tab
 
 jobs:
   build-and-commit:
     runs-on: ubuntu-latest
+
+    # ==========================================================
+    # THE FIX IS HERE: Granting write permissions to the token
+    # ==========================================================
+    permissions:
+      contents: 'write'  # Allows the action to push code (git push)
+      id-token: 'write'  # Required for authenticating to Google Cloud
+
     steps:
       - name: Checkout repo content
         uses: actions/checkout@v4
+
+      - name: 'Authenticate to Google Cloud'
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          # Make sure these values from your GCP setup are correct
+          workload_identity_provider: 'projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/YOUR_POOL_ID/providers/YOUR_PROVIDER_ID'
+          service_account: 'YOUR_SERVICE_ACCOUNT_EMAIL' # e.g., github-actions-reader@stock-prediction-464505.iam.gserviceaccount.com
+
+      - name: 'Get Secrets from Google Cloud Secret Manager'
+        id: 'secrets'
+        uses: 'google-github-actions/get-secret-manager-secrets@v2'
+        with:
+          secrets: |-
+            GEMINI_API_KEY:projects/stock-prediction-464505/secrets/GEMINI_API_KEY/versions/latest
+            NEWS_API_KEY:projects/stock-prediction-464505/secrets/NEWS_API_KEY/versions/latest
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -23,8 +47,8 @@ jobs:
 
       - name: Run prediction script
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          GEMINI_API_KEY: ${{ steps.secrets.outputs.GEMINI_API_KEY }}
+          NEWS_API_KEY: ${{ steps.secrets.outputs.NEWS_API_KEY }}
         run: python generate_predictions.py
 
       - name: Commit and push changes
@@ -32,6 +56,6 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add predictions.json
-          # Commit only if there are changes
+          # This command checks if there are any changes to commit. If not, it does nothing.
           git diff --staged --quiet || git commit -m "Update daily predictions"
           git push
