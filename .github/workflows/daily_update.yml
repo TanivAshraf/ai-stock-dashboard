@@ -1,0 +1,56 @@
+name: Generate Daily Stock Predictions
+
+on:
+  schedule:
+    # Runs at 22:00 UTC (e.g., 6 PM EST) every weekday
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch: # Allows manual run from the Actions tab
+
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'write'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout repo content
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/YOUR_POOL_ID/providers/YOUR_PROVIDER_ID'
+          service_account: 'YOUR_SERVICE_ACCOUNT_EMAIL'
+
+      - name: Get Secrets from Google Cloud Secret Manager
+        id: secrets
+        uses: 'google-github-actions/get-secret-manager-secrets@v2'
+        with:
+          secrets: |-
+            GEMINI_API_KEY:projects/stock-prediction-464505/secrets/GEMINI_API_KEY/versions/latest
+            NEWS_API_KEY:projects/stock-prediction-464505/secrets/NEWS_API_KEY/versions/latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests yfinance pandas
+
+      - name: Run prediction script
+        env:
+          GEMINI_API_KEY: ${{ steps.secrets.outputs.GEMINI_API_KEY }}
+          NEWS_API_KEY: ${{ steps.secrets.outputs.NEWS_API_KEY }}
+        run: python generate_predictions.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add predictions.json
+          git diff --staged --quiet || git commit -m "Update daily predictions"
+          git push
