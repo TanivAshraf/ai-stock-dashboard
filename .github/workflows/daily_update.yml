@@ -10,28 +10,28 @@ jobs:
   build-and-commit:
     runs-on: ubuntu-latest
 
-    # ==========================================================
-    # THE FIX IS HERE: Granting write permissions to the token
-    # ==========================================================
     permissions:
-      contents: 'write'  # Allows the action to push code (git push)
-      id-token: 'write'  # Required for authenticating to Google Cloud
+      contents: 'write'
+      id-token: 'write'
 
     steps:
       - name: Checkout repo content
         uses: actions/checkout@v4
 
+      # ==========================================================
+      # THE FIX IS HERE: Using more specific action versions
+      # ==========================================================
       - name: 'Authenticate to Google Cloud'
         id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+        uses: 'google-github-actions/auth@v2.3.0' # Changed from v2
         with:
           # Make sure these values from your GCP setup are correct
           workload_identity_provider: 'projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/YOUR_POOL_ID/providers/YOUR_PROVIDER_ID'
-          service_account: 'YOUR_SERVICE_ACCOUNT_EMAIL' # e.g., github-actions-reader@stock-prediction-464505.iam.gserviceaccount.com
+          service_account: 'YOUR_SERVICE_ACCOUNT_EMAIL'
 
       - name: 'Get Secrets from Google Cloud Secret Manager'
         id: 'secrets'
-        uses: 'google-github-actions/get-secret-manager-secrets@v2'
+        uses: 'google-github-actions/get-secret-manager-secrets@v2.2.0' # Changed from v2
         with:
           secrets: |-
             GEMINI_API_KEY:projects/stock-prediction-464505/secrets/GEMINI_API_KEY/versions/latest
@@ -56,6 +56,5 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add predictions.json
-          # This command checks if there are any changes to commit. If not, it does nothing.
           git diff --staged --quiet || git commit -m "Update daily predictions"
           git push
