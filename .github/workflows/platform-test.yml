@@ -1,0 +1,14 @@
+name: Platform Network Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-action-resolution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: This is the only step. Try to find the Google Secrets action.
+        uses: 'google-github-actions/get-secret-manager-secrets@v2'
+        with:
+          # This part doesn't matter, we just need to see if the 'uses' line works.
+          secrets: 'test-secret:projects/12345/secrets/test/versions/latest'
