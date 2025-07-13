@@ -8,7 +8,6 @@ on:
 
 jobs:
   build-and-commit:
-    # THE FIX IS HERE: Requesting a different, stable runner environment
     runs-on: ubuntu-22.04
 
     permissions:
@@ -21,14 +20,14 @@ jobs:
 
       - name: Authenticate to Google Cloud
         id: auth
-        uses: 'google-github-actions/auth@v2'
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/YOUR_POOL_ID/providers/YOUR_PROVIDER_ID'
           service_account: 'YOUR_SERVICE_ACCOUNT_EMAIL'
 
       - name: Get Secrets from Google Cloud Secret Manager
         id: secrets
-        uses: 'google-github-actions/get-secret-manager-secrets@v2'
+        uses: google-github-actions/get-secretmanager-secrets@v2
         with:
           secrets: |-
             GEMINI_API_KEY:projects/stock-prediction-464505/secrets/GEMINI_API_KEY/versions/latest
